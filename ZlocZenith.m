@@ -56,7 +56,7 @@ function ZlocZenith_OpeningFcn(hObject, eventdata, handles, varargin)
 addpath(genpath('Functions'));
 
 %Check if Settings.mat exists, if not create and load the defualt
-if exist(fullfile(cd, 'Settings\programSettings.mat'), 'file') == 2
+if exist(fullfile(cd, 'Settings','programSettings.mat'), 'file') == 2
    load('Settings\programSettings.mat');
 else
     defaultSettings();
