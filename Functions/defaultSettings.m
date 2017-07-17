@@ -22,7 +22,7 @@ programSettings = struct('baseLocationsRig',baseLocationsRig,...
     'Fb',Fb,...
     'dragScreenDia', dragScreenDia);
 
-save Settings\programSettings.mat programSettings
+save(fullfile(cd, 'Settings','programSettings.mat'),'programSettings');
 
 end
 

@@ -22,7 +22,7 @@ function varargout = ZlocZenith(varargin)
 
 % Edit the above text to modify the response to help ZlocZenith
 
-% Last Modified by GUIDE v2.5 11-Jul-2017 15:21:38
+% Last Modified by GUIDE v2.5 13-Jul-2017 15:23:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -52,21 +52,25 @@ function ZlocZenith_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to ZlocZenith (see VARARGIN)
 
+global appSettings
+global OCTResults
+global image
+
 %Add functions path
-addpath(genpath('Functions'));
+addpath(genpath(pwd));
 
 %Check if Settings.mat exists, if not create and load the defualt
 if exist(fullfile(cd, 'Settings','programSettings.mat'), 'file') == 2
-   load('Settings\programSettings.mat');
+   load(fullfile(cd, 'Settings','programSettings.mat'));
 else
     defaultSettings();
-    load('Settings\programSettings.mat');
+    load(fullfile(cd, 'Settings','programSettings.mat'));
 end
 
-
+appSettings = programSettings;
 % Choose default command line output for ZlocZenith
 handles.output = hObject;
-handles.programSettings = programSettings;
+% handles.programSettings = programSettings;
 
 % Update handles structure
 guidata(hObject, handles);
@@ -602,8 +606,10 @@ function pushbutton6_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton6 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-[tetherLength, zenith, totalPower] = checkPower(handles.programSettings)
+global appSettings
+global image
+image=getimage(handles);
+% [tetherLength, zenith, totalPower] = checkPower(appSettings,image);
 
 % --- Executes on button press in pushbutton7.
 function pushbutton7_Callback(hObject, eventdata, handles)
@@ -617,7 +623,6 @@ fileinfo=imfinfo(image);
 FileSize1=fileinfo.FileSize(1,1);
 sizew=fileinfo.Width(1,1);
 sizeh=fileinfo.Height(1,1);
-
 axes(handles.PRW);
 imshow(image)
 %set(handles.edit1,'string',name);
@@ -625,3 +630,35 @@ set(handles.edit2,'string',ext);
 set(handles.edit3,'string',sizew);
 set(handles.edit4,'string',sizeh);
 set(handles.edit5,'string',FileSize1);
+
+
+% handles.setttings.baselocation = st2num(get())
+
+function image=getimage(handles)
+image =[];
+if get(handles.currentradiobutton,'Value')
+    global CAM;
+    if(CAM==1)
+        CAM=0;
+        image=getsnapshot(handles.VidObj);
+        closepreview
+        %     clear VidObj
+        %     delete  VidObj
+        imshow(image,'parent',handles.PRW);
+        imwrite(image,'tempheightcheck.jpg');
+    else
+        msgbox('Plz! Start Cam First by PUSHBUTTON')
+    end
+else get(handles.browseradiobutton,'Value')
+    [filename pathname] = uigetfile({'*.jpg';'*.bmp'},'File Selector');
+    image = strcat(pathname, filename);
+    [pathstr, name, ext] = fileparts(filename);
+%     fileinfo=imfinfo(image);
+%     FileSize1=fileinfo.FileSize(1,1);
+%     sizew=fileinfo.Width(1,1);
+%     sizeh=fileinfo.Height(1,1);
+    axes(handles.PRW);
+    imshow(image)
+end
+
+sprintf('');
