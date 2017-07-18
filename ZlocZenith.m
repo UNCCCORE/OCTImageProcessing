@@ -56,6 +56,8 @@ global appSettings
 global OCTResults
 global image
 
+OCTResults = struct;
+
 %Add functions path
 addpath(genpath(pwd));
 
@@ -599,7 +601,9 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global appSettings;
-tetherLength = checkHeight(appSettings)
+global image;
+image=getimage(handles);
+tetherLength = checkHeight(appSettings,image)
 %set(handles.editbox1, 'String', num2str(numLabels));
 
 % --- Executes on button press in pushbutton6.
@@ -608,9 +612,10 @@ function pushbutton6_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global appSettings
+global OCTResults
 global image
 image=getimage(handles);
-% [tetherLength, zenith, totalPower] = checkPower(appSettings,image);
+OCTResults = checkPower(appSettings,image)
 
 % --- Executes on button press in pushbutton7.
 function pushbutton7_Callback(hObject, eventdata, handles)

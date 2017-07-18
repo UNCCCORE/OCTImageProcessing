@@ -1,12 +1,23 @@
-function tetherLength = checkHeight(Settings)
+function OCTResults = checkHeight(appSettings,imagePath)
 %% Prescript work
 % clear all, close all, clc;
 
+%% Assign structures values to local variables
+distToRigOrigin = appSettings.distToRigOrigin; %vector to rig origin in cam cordinates (cm)
+FoV = appSettings.FoV; %degrees
+markDistFromCoM = appSettings.markDistFromCoM;
+basesRig = appSettings.baseLocationsRig; %cordinates of bases in rig coridinate system (cm)
+basesCam = zeros(9,3); %cordinates of bases in cam coridinate system (cm)
 
+for i=1:9
+    basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
+end
+
+yCam = 50.*ones(9,1); % cm
 
 %% Image preperation
 %Import image
-I = imread('tempImage.jpg');
+I = imread(imagePath);
 imageDim = [length(I(1,:,1)) length(I(:,1,1))];
 %axes(handles.PRW),imshow(I);
 imshow(I);
@@ -65,14 +76,6 @@ for i=1:9
     end
 end
 
-basesRig = zeros(9,3); %cordinates of bases in rig coridinate system (cm)
-basesCam = zeros(9,3); %cordinates of bases in cam coridinate system (cm)
-rigOriginCam = [60 10 50]; %vector to rig origin in cam cordinates (cm)
-
-for i=1:9
-    basesCam(i,:) = basesRig(i,:) + rigOriginCam;
-end
-
 cEx = 0;
 sEx = 0;
 tEx = 0;
@@ -128,11 +131,9 @@ for j=1:3
     k = k + 3;
 end
 
-% plotAllMarks(marksIm);
+plotAllMarks(marksIm);
 
 %% get absolute posistions and calculate zenith angles
-yCam = 50.*ones(9,1); % cm
-FoV = [65.5 46.4]; %degrees
 
 % get absolute positions
 CoMIm = zeros(9,2);
@@ -192,11 +193,13 @@ end
 
 %zenith angles and tether lengths
 for i=1:9
-    basesCam(i,:) = basesRig(i,:) + rigOriginCam;
-    zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
+    basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
+%     zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
     tetherLength(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
 end
 
+struc OCTResults;
+OCTResults.tetherLengths = tetherLength;
 
 %% define functions
     function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
@@ -205,21 +208,39 @@ end
         %angle field of view and outputs the location of the mark in fixed camera
         %cordinates (in cm).
         if xIm ~= 0 && zIm ~= 0
-            FoV = FoV.*pi./180; %convert degrees to radians
             
-            psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
-            psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
+            N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
+            Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
+            if xIm > imageDim(1)/2
+                markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
+            else
+                markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
+            end
             
-            Rx = [1 0 0; 0 cos(psiX) sin(psiX); 0 -sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
-            Rz = [cos(psiZ) sin(psiZ) 0; -sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
+            Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
+            if zIm > imageDim(2)/2
+                markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
+            else
+                markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
+            end
             
-            u0 = [0;1;0]; %initial unit vector in yCam direction
+            markCam(2) = yCam;
             
-            u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
-            
-            F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
-            
-            markCam = F.*u1; %vector from camera origin to mark location
+            %             FoV = FoV.*pi./180; %convert degrees to radians
+            %
+            %             psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
+            %             psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
+            %
+            %             Rx = [1 0 0; 0 cos(psiX) sin(psiX); 0 -sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
+            %             Rz = [cos(psiZ) sin(psiZ) 0; -sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
+            %
+            %             u0 = [0;1;0]; %initial unit vector in yCam direction
+            %
+            %             u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
+            %
+            %             F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
+            %
+            %             markCam = F.*u1; %vector from camera origin to mark location
         else
             markCam = [0;0;0];
         end
@@ -231,8 +252,8 @@ end
         %is not handled but is left for the master script.
         
         CoM = [0 0];
-        fore2CoM = 2.5; % horizontal distance from fore mark to CoM (cm)
-        aft2CoM = 2.5; % horizontal distance from aft mark to CoM (cm)
+        fore2CoM = markDistFromCoM(1); % horizontal distance from fore mark to CoM (cm)
+        aft2CoM = markDistFromCoM(1); % horizontal distance from aft mark to CoM (cm)
         
         if foreCam(1) ~= 0 && aftCam(1) ~= 0
             if foreCam(1) < aftCam(1) %check to make sure fore and aft are correctly assigned
@@ -255,7 +276,7 @@ end
             % ask user if given mark is fore or aft
             %     axes(handles.PRW);
             hold on;
-            tempPlot = plot(unknownMarkIm(1),unknownMarkIm(2),'o','Color','White');
+            tempPlot = plot(unknownMarkIm(1),unknownMarkIm(2),'o','Color','Red','LineWidth',1);
             
             markerLocation = inputdlg('Is this mark fore or aft? (F or A):');
             while strcmpi(markerLocation,'F') == 0 & strcmpi(markerLocation, 'A') == 0
@@ -276,13 +297,12 @@ end
             end
         else
             % turbine is completly hidden, ask user where it is
-            CoM(1) = -42;
-            CoM(2) = 42;
+            CoM(1) = NaN;
+            CoM(2) = NaN;
         end
     end
 
     function plotAllMarks(marks)
-        figure(1);
         hold on;
         for i=1:9
             for j=1:2

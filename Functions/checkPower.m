@@ -1,10 +1,38 @@
-function [tetherLength, zenith, totalPower] = checkPower(Settings)
+function OCTResults = checkPower(appSettings,imagePath)
 %% Prescript work
 % clear all, close all, clc;
 
+%% Assign structures values to local variables
+% image processing constants
+distToRigOrigin = appSettings.distToRigOrigin; %vector to rig origin in cam cordinates (cm)
+FoV = appSettings.FoV; %degrees
+markDistFromCoM = appSettings.markDistFromCoM;
+basesRig = appSettings.baseLocationsRig; %cordinates of bases in rig coridinate system (cm)
+basesCam = zeros(9,3); %cordinates of bases in cam coridinate system (cm)
+
+% power related constants
+rho = appSettings.rho; %kg/m^3
+Fb = appSettings.Fb; %N
+Cp = appSettings.Cp;
+
+k0 = appSettings.kParms(1);
+k1 = appSettings.kParms(2);
+
+k0_bar = appSettings.kParms(3);
+k1_bar = appSettings.kParms(4);
+k2_bar = appSettings.kParms(5); 
+
+dia = appSettings.dragScreenDia; %cm
+
+for i=1:9
+    basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
+end
+
+yCam = 50.*ones(9,1); % cm
+
 %% Image preperation
 %Import image
-I = imread('tempImage.jpg');
+I = imread(imagePath);
 imageDim = [length(I(1,:,1)) length(I(:,1,1))];
 %axes(handles.PRW),imshow(I);
 imshow(I);
@@ -61,14 +89,6 @@ for i=1:9
     for j=1:3
         marksCam{i,j} = [0 0];
     end
-end
-
-basesRig = zeros(9,3); %cordinates of bases in rig coridinate system (cm)
-basesCam = zeros(9,3); %cordinates of bases in cam coridinate system (cm)
-rigOriginCam = [60 10 50]; %vector to rig origin in cam cordinates (cm)
-
-for i=1:9
-    basesCam(i,:) = basesRig(i,:) + rigOriginCam;
 end
 
 cEx = 0;
@@ -129,8 +149,6 @@ end
 % plotAllMarks(marksIm);
 
 %% get absolute posistions and calculate zenith angles
-yCam = 50.*ones(9,1); % cm
-FoV = [65.5 46.4]; %degrees
 
 % get absolute positions
 CoMIm = zeros(9,2);
@@ -190,11 +208,43 @@ end
 
 %% zenith angles and tether lengths
 for i=1:9
-    basesCam(i,:) = basesRig(i,:) + rigOriginCam;
+    basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
     zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
     tetherLength(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
 end
+
+%% find power
+%Define constants
+A = 2*(pi/4*(dia/100)^2); %m^2. Area of 2 turbines, used as reference area throughout.
+
+%"Get" inputs
+alpha_d = zeros(9,1); %degrees. Left in for future non-zero angle of attack
+
+%Convert to radians
+alpha = alpha_d.*pi./180; %radians
+theta = zenith.*pi./180; %radians
+
+%Calculate v
+for i=1:9
+    %Calculate Cd and Cl
+    Cl(i) =  k0 + k1*alpha(i);
+    Cd(i) = k0_bar + k1_bar*alpha(i) + k2_bar*alpha(i)^2;
+    
+    %Calculate v
+    v(i) = sqrt(Fb*tan(theta(i))/(0.5*rho*A*(Cd(i)-Cl(i)*tan(theta(i))))); %m/sec
+end
+
+%Calculate power for each turbine
 totalPower = 0;
+for i=1:9
+        P(i) = 0.5*rho*A*v(i)^3*Cp; %W. Area is for both turbines.
+        totalPower = totalPower + P(i); %W
+end
+
+struc OCTResults;
+OCTResults.tetherLengths = tetherLength;
+OCTResults.zenith = zenith;
+OCTResults.totalPower = totalPower;
 
 %% define functions
     function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
@@ -203,21 +253,39 @@ totalPower = 0;
         %angle field of view and outputs the location of the mark in fixed camera
         %cordinates (in cm).
         if xIm ~= 0 && zIm ~= 0
-            FoV = FoV.*pi./180; %convert degrees to radians
             
-            psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
-            psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
+            N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
+            Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
+            if xIm > imageDim(1)/2
+                markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
+            else
+                markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
+            end
             
-            Rx = [1 0 0; 0 cos(psiX) sin(psiX); 0 -sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
-            Rz = [cos(psiZ) sin(psiZ) 0; -sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
+            Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
+            if zIm > imageDim(2)/2
+                markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
+            else
+                markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
+            end
             
-            u0 = [0;1;0]; %initial unit vector in yCam direction
+            markCam(2) = yCam;
             
-            u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
-            
-            F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
-            
-            markCam = F.*u1; %vector from camera origin to mark location
+            %             FoV = FoV.*pi./180; %convert degrees to radians
+            %
+            %             psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
+            %             psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
+            %
+            %             Rx = [1 0 0; 0 cos(psiX) sin(psiX); 0 -sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
+            %             Rz = [cos(psiZ) sin(psiZ) 0; -sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
+            %
+            %             u0 = [0;1;0]; %initial unit vector in yCam direction
+            %
+            %             u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
+            %
+            %             F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
+            %
+            %             markCam = F.*u1; %vector from camera origin to mark location
         else
             markCam = [0;0;0];
         end
@@ -229,8 +297,8 @@ totalPower = 0;
         %is not handled but is left for the master script.
         
         CoM = [0 0];
-        fore2CoM = 2.5; % horizontal distance from fore mark to CoM (cm)
-        aft2CoM = 2.5; % horizontal distance from aft mark to CoM (cm)
+        fore2CoM = markDistFromCoM(1); % horizontal distance from fore mark to CoM (cm)
+        aft2CoM = markDistFromCoM(1); % horizontal distance from aft mark to CoM (cm)
         
         if foreCam(1) ~= 0 && aftCam(1) ~= 0
             if foreCam(1) < aftCam(1) %check to make sure fore and aft are correctly assigned
@@ -274,8 +342,8 @@ totalPower = 0;
             end
         else
             % turbine is completly hidden, ask user where it is
-            CoM(1) = -42;
-            CoM(2) = 42;
+            CoM(1) = NaN;
+            CoM(2) = NaN;
         end
     end
 
