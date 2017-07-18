@@ -52,6 +52,17 @@ function OCT_Power_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to OCT_Power (see VARARGIN)
 
+global appSettings
+global OCTResults
+global image
+
+for i = 1:9
+    OCTResults(i).x = [];
+    OCTResults(i).y = [];
+    OCTResults(i).z = [];
+    OCTResults(i).zenith = [];
+end
+
 % Choose default command line output for OCT_Power
 handles.output = hObject;
 
@@ -93,6 +104,16 @@ function checkheight_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+global appSettings;
+global OCTResults;
+global image;
+% image=getimage(handles);
+% OCTResults = checkHeight(appSettings,image);
+% matrix = NathansFunction(inputs);
+OCTResults = NathansFunction(image,OCTResults);
+oct9h=num2str(OCTResults(9).height);
+set(handles.oct9h, 'String', oct9h)
+
 
 % --- Executes on button press in zenithpower.
 function zenithpower_Callback(hObject, eventdata, handles)
@@ -121,7 +142,9 @@ function oct9x_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of oct9x as text
 %        str2double(get(hObject,'String')) returns contents of oct9x as a double
+global appSettings
 a=str2num(get(handles.oct9x,'String'));
+%appSettings.kParms(3) = a;
 setappdata(0,'num_1',a);
 
 % --- Executes during object creation, after setting all properties.
