@@ -598,7 +598,8 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton5 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-tetherLength = checkHeight(handles.programSettings)
+global appSettings;
+tetherLength = checkHeight(appSettings)
 %set(handles.editbox1, 'String', num2str(numLabels));
 
 % --- Executes on button press in pushbutton6.
