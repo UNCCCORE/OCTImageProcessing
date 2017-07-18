@@ -601,9 +601,10 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global appSettings;
+global OCTResults;
 global image;
 image=getimage(handles);
-tetherLength = checkHeight(appSettings,image)
+OCTResults = checkHeight(appSettings,image)
 %set(handles.editbox1, 'String', num2str(numLabels));
 
 % --- Executes on button press in pushbutton6.

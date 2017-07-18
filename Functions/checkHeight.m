@@ -1,7 +1,4 @@
 function OCTResults = checkHeight(appSettings,imagePath)
-%% Prescript work
-% clear all, close all, clc;
-
 %% Assign structures values to local variables
 distToRigOrigin = appSettings.distToRigOrigin; %vector to rig origin in cam cordinates (cm)
 FoV = appSettings.FoV; %degrees
@@ -22,31 +19,32 @@ imageDim = [length(I(1,:,1)) length(I(:,1,1))];
 %axes(handles.PRW),imshow(I);
 imshow(I);
 
-% %Filtering
+%Filtering
 h = fspecial('average', [3 3]);
 I2 = imfilter(I,h);
 % imshow(I2);
 
-% %Convert to grayscale
-% Igray = rgb2gray(I2);
-
 %% Marker recognition
-
 %Isolate into three colors
 %redness
-Ithresh{1}= (I2(:,:,1) - max(I2(:,:,2), I2(:,:,3))) > 60;
+redThresh = 60;
+Ithresh{1}= (I2(:,:,1) - max(I2(:,:,2), I2(:,:,3))) > redThresh;
 Ithresh{1} = imfill(Ithresh{1},'holes');
 % figure();
 % imshow(Ithresh{1});
 
 %yellowness
-Ithresh{2} = ((I2(:,:,1) > 240) & (I2(:,:,2) > 240) & (I2(:,:,3) < 170));
+yellowThresh1 = 240;
+yellowThresh2 = 240;
+yellowThresh3 = 170;
+Ithresh{2} = ((I2(:,:,1) > yellowThresh1) & (I2(:,:,2) > yellowThresh2) & (I2(:,:,3) < yellowThresh3));
 Ithresh{2} = imfill(Ithresh{2},'holes');
 % figure();
 % imshow(Ithresh{2});
 
 %blueness
-Ithresh{3} = (I2(:,:,3) - max(I2(:,:,1), I2(:,:,2))) > 50;
+blueThresh = 50;
+Ithresh{3} = (I2(:,:,3) - max(I2(:,:,1), I2(:,:,2))) > blueThresh;
 Ithresh{3} = imfill(Ithresh{3},'holes');
 %figure();
 %imshow(Ithresh{3});
@@ -133,7 +131,7 @@ end
 
 plotAllMarks(marksIm);
 
-%% get absolute posistions and calculate zenith angles
+%% get absolute posistions
 
 % get absolute positions
 CoMIm = zeros(9,2);
@@ -191,15 +189,15 @@ for i=1:9
     end
 end
 
-%zenith angles and tether lengths
+%% zenith angles and tether lengths
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
 %     zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
-    tetherLength(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
+    heights(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
 end
 
 struc OCTResults;
-OCTResults.tetherLengths = tetherLength;
+OCTResults.heights = heights;
 
 %% define functions
     function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
@@ -276,7 +274,7 @@ OCTResults.tetherLengths = tetherLength;
             % ask user if given mark is fore or aft
             %     axes(handles.PRW);
             hold on;
-            tempPlot = plot(unknownMarkIm(1),unknownMarkIm(2),'o','Color','Red','LineWidth',1);
+            tempPlot = plot(unknownMarkIm(1),unknownMarkIm(2),'o','Color','Red','LineWidth',2);
             
             markerLocation = inputdlg('Is this mark fore or aft? (F or A):');
             while strcmpi(markerLocation,'F') == 0 & strcmpi(markerLocation, 'A') == 0
@@ -306,7 +304,7 @@ OCTResults.tetherLengths = tetherLength;
         hold on;
         for i=1:9
             for j=1:2
-                plot(marks{i,1}(j),marks{i,2}(j),'o','Color',[0.1*i,0.5*j,0.5]);
+                plot(marks{i,1}(j),marks{i,2}(j),'o','Color','White');
             end
         end
         hold off;
