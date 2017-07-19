@@ -241,7 +241,7 @@ end
 
 %% assign outputs to structure
 struc OCTResults;
-OCTResults.tetherLengths = tetherLength;
+OCTResults.heights = heights;
 OCTResults.zenith = zenith;
 OCTResults.totalPower = totalPower;
 

@@ -56,12 +56,24 @@ global appSettings
 global OCTResults
 global image
 
+addpath(genpath(pwd));
+
 for i = 1:9
     OCTResults(i).x = [];
     OCTResults(i).y = [];
     OCTResults(i).z = [];
     OCTResults(i).zenith = [];
 end
+
+%Check if Settings.mat exists, if not create and load the defualt
+if exist(fullfile(cd, 'Settings','programSettings.mat'), 'file') == 2
+   load(fullfile(cd, 'Settings','programSettings.mat'));
+else
+    defaultSettings();
+    load(fullfile(cd, 'Settings','programSettings.mat'));
+end
+
+appSettings = programSettings;
 
 % Choose default command line output for OCT_Power
 handles.output = hObject;
@@ -107,12 +119,21 @@ function checkheight_Callback(hObject, eventdata, handles)
 global appSettings;
 global OCTResults;
 global image;
-% image=getimage(handles);
+image=getimage(handles);
 % OCTResults = checkHeight(appSettings,image);
 % matrix = NathansFunction(inputs);
-OCTResults = NathansFunction(image,OCTResults);
-oct9h=num2str(OCTResults(9).height);
-set(handles.oct9h, 'String', oct9h)
+OCTResults = checkHeight(appSettings,image);
+
+%set heights to static boxes
+set(handles.oct9h, 'String', num2str(OCTResults.heights(9)));
+set(handles.oct8h, 'String', num2str(OCTResults.heights(8)));
+set(handles.oct7h, 'String', num2str(OCTResults.heights(7)));
+set(handles.oct6h, 'String', num2str(OCTResults.heights(6)));
+set(handles.oct5h, 'String', num2str(OCTResults.heights(5)));
+set(handles.oct4h, 'String', num2str(OCTResults.heights(4)));
+set(handles.oct3h, 'String', num2str(OCTResults.heights(3)));
+set(handles.oct2h, 'String', num2str(OCTResults.heights(2)));
+set(handles.oct1h, 'String', num2str(OCTResults.heights(1)));
 
 
 % --- Executes on button press in zenithpower.
@@ -120,7 +141,38 @@ function zenithpower_Callback(hObject, eventdata, handles)
 % hObject    handle to zenithpower (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global appSettings;
+global OCTResults;
+global image;
+image=getimage(handles);
+% OCTResults = checkHeight(appSettings,image);
+% matrix = NathansFunction(inputs);
+OCTResults = checkPower(appSettings,image);
 
+%set heights
+set(handles.oct9h, 'String', num2str(OCTResults.heights(9)));
+set(handles.oct8h, 'String', num2str(OCTResults.heights(8)));
+set(handles.oct7h, 'String', num2str(OCTResults.heights(7)));
+set(handles.oct6h, 'String', num2str(OCTResults.heights(6)));
+set(handles.oct5h, 'String', num2str(OCTResults.heights(5)));
+set(handles.oct4h, 'String', num2str(OCTResults.heights(4)));
+set(handles.oct3h, 'String', num2str(OCTResults.heights(3)));
+set(handles.oct2h, 'String', num2str(OCTResults.heights(2)));
+set(handles.oct1h, 'String', num2str(OCTResults.heights(1)));
+
+%set zenith angles
+set(handles.oct9z, 'String', num2str(OCTResults.zenith(9)));
+set(handles.oct8z, 'String', num2str(OCTResults.zenith(8)));
+set(handles.oct7z, 'String', num2str(OCTResults.zenith(7)));
+set(handles.oct6z, 'String', num2str(OCTResults.zenith(6)));
+set(handles.oct5z, 'String', num2str(OCTResults.zenith(5)));
+set(handles.oct4z, 'String', num2str(OCTResults.zenith(4)));
+set(handles.oct3z, 'String', num2str(OCTResults.zenith(3)));
+set(handles.oct2z, 'String', num2str(OCTResults.zenith(2)));
+set(handles.oct1z, 'String', num2str(OCTResults.zenith(1)));
+
+hold on;
+text(100,200,sprintf('Total power output: %0.000f W',OCTResults.totalPower),'Color','White','FontSize',20,'FontWeight','Bold');
 
 % --- Executes on button press in snapshot.
 function snapshot_Callback(hObject, eventdata, handles)
@@ -550,3 +602,32 @@ function oct1y_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+function image=getimage(handles)
+image =[];
+if get(handles.current,'Value')
+    global CAM;
+    if(CAM==1)
+        CAM=0;
+        image=getsnapshot(handles.VidObj);
+        closepreview
+        %     clear VidObj
+        %     delete  VidObj
+        imshow(image,'parent',handles.PRW);
+        imwrite(image,'tempheightcheck.jpg');
+    else
+        msgbox('Plz! Start Cam First by PUSHBUTTON')
+    end
+else get(handles.browse,'Value')
+    [filename pathname] = uigetfile({'*.jpg';'*.bmp'},'File Selector');
+    image = strcat(pathname, filename);
+    [pathstr, name, ext] = fileparts(filename);
+%     fileinfo=imfinfo(image);
+%     FileSize1=fileinfo.FileSize(1,1);
+%     sizew=fileinfo.Width(1,1);
+%     sizeh=fileinfo.Height(1,1);
+    axes(handles.PRW);
+    imshow(image)
+end
+
+sprintf('');
