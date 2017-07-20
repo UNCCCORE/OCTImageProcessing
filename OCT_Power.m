@@ -22,7 +22,7 @@ function varargout = OCT_Power(varargin)
 
 % Edit the above text to modify the response to help OCT_Power
 
-% Last Modified by GUIDE v2.5 14-Jul-2017 17:01:01
+% Last Modified by GUIDE v2.5 19-Jul-2017 17:32:19
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -173,7 +173,8 @@ set(handles.oct2z, 'String', num2str(OCTResults.zenith(2)));
 set(handles.oct1z, 'String', num2str(OCTResults.zenith(1)));
 
 hold on;
-text(100,200,sprintf('Total power output: %0.000f W',OCTResults.totalPower),'Color','White','FontSize',20,'FontWeight','Bold');
+%text(100,200,sprintf('Total power output: %0.000f W',OCTResults.totalPower),'Color','White','FontSize',20,'FontWeight','Bold');
+set(handles.powerRatio, 'String', num2str(OCTResults.totalPower));
 
 % --- Executes on button press in snapshot.
 function snapshot_Callback(hObject, eventdata, handles)
@@ -181,11 +182,11 @@ function snapshot_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-m=getappdata(0,'num_1');
-n=getappdata(0,'num_2');
-oct9h=m+n;
-oct9h=num2str(oct9h);
-set(handles.oct9h, 'String', oct9h)
+% m=getappdata(0,'num_1');
+% n=getappdata(0,'num_2');
+% oct9h=m+n;
+% oct9h=num2str(oct9h);
+% set(handles.oct9h, 'String', oct9h)
 
 
 function oct9x_Callback(hObject, eventdata, handles)
@@ -607,18 +608,21 @@ end
 function image=getimage(handles)
 image =[];
 if get(handles.current,'Value')
-    global CAM;
-    if(CAM==1)
-        CAM=0;
-        image=getsnapshot(handles.VidObj);
-        closepreview
-        %     clear VidObj
-        %     delete  VidObj
-        imshow(image,'parent',handles.PRW);
-        imwrite(image,'tempheightcheck.jpg');
-    else
-        msgbox('Plz! Start Cam First by PUSHBUTTON')
-    end
+    axes(handles.PRW);
+    image=fullfile(pwd,'tempImage.jpg');
+    imshow(image);
+%     global CAM;
+%     if(CAM==1)
+%         CAM=0;
+%         image=getsnapshot(handles.VidObj);
+%         closepreview
+%         %     clear VidObj
+%         %     delete  VidObj
+%         imshow(image,'parent',handles.PRW);
+%         imwrite(image,'tempheightcheck.jpg');
+%     else
+%         msgbox('Plz! Start Cam First by PUSHBUTTON')
+%     end
 else get(handles.browse,'Value')
     [filename pathname] = uigetfile({'*.jpg';'*.bmp'},'File Selector');
     image = strcat(pathname, filename);
@@ -632,3 +636,21 @@ else get(handles.browse,'Value')
 end
 
 sprintf('');
+
+
+% --- Executes on button press in current.
+function current_Callback(hObject, eventdata, handles)
+% hObject    handle to current (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of current
+
+
+% --- Executes on button press in browse.
+function browse_Callback(hObject, eventdata, handles)
+% hObject    handle to browse (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of browse
