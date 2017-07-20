@@ -59,12 +59,12 @@ global image
 
 addpath(genpath(pwd));
 
-for i = 1:9
-    OCTResults(i).x = [];
-    OCTResults(i).y = [];
-    OCTResults(i).z = [];
-    OCTResults(i).zenith = [];
-end
+% for i = 1:9
+%     OCTResults(i).x = [];
+%     OCTResults(i).y = [];
+%     OCTResults(i).z = [];
+%     OCTResults(i).zenith = [];
+% end
 
 %Check if Settings.mat exists, if not create and load the defualt
 if exist(fullfile(cd, 'Settings','programSettings.mat'), 'file') == 2
@@ -174,7 +174,7 @@ set(handles.oct1z, 'String', num2str(OCTResults.zenith(1)));
 
 hold on;
 %text(100,200,sprintf('Total power output: %0.000f W',OCTResults.totalPower),'Color','White','FontSize',20,'FontWeight','Bold');
-set(handles.powerRatio, 'String', num2str(OCTResults.totalPower));
+set(handles.powerRatio, 'String', num2str(OCTResults.powerRatio));
 
 % --- Executes on button press in snapshot.
 function snapshot_Callback(hObject, eventdata, handles)

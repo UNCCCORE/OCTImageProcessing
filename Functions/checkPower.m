@@ -19,7 +19,12 @@ k0_bar = appSettings.kParms(3);
 k1_bar = appSettings.kParms(4);
 k2_bar = appSettings.kParms(5); 
 
-dia = appSettings.dragScreenDia; %cm
+dia = appSettings.dragScreenDia; %m
+freestreamVelocity = appSettings.freestreamVelocity; %m/sec
+
+distToGlass = appSettings.distToGlass; %cm
+n1 = appSettings.n1;
+n2 = appSettings.n2;
 
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
@@ -213,7 +218,7 @@ end
 
 %% find power
 %Define constants
-A = 2*(pi/4*(dia/100)^2); %m^2. Area of 2 turbines, used as reference area throughout.
+A = 2*(pi/4*(dia)^2); %cm^2. Area of 2 turbines, used as reference area throughout.
 
 %"Get" inputs
 alpha_d = zeros(9,1); %degrees. Left in for future non-zero angle of attack
@@ -233,17 +238,20 @@ for i=1:9
 end
 
 %Calculate power for each turbine
-totalPower = 0;
+totalPowerExp = 0;
+totalPowerFree = 9*(0.5*rho*Cp*A*freestreamVelocity^3); %W
 for i=1:9
         P(i) = 0.5*rho*A*v(i)^3*Cp; %W. Area is for both turbines.
-        totalPower = totalPower + P(i); %W
+        totalPowerExp = totalPowerExp + P(i); %W
 end
+
+powerRatio = totalPowerExp/totalPowerFree;
 
 %% assign outputs to structure
 struc OCTResults;
 OCTResults.heights = heights;
 OCTResults.zenith = zenith;
-OCTResults.totalPower = totalPower;
+OCTResults.powerRatio = powerRatio;
 
 %% define functions
     function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
@@ -252,24 +260,26 @@ OCTResults.totalPower = totalPower;
         %angle field of view and outputs the location of the mark in fixed camera
         %cordinates (in cm).
         if xIm ~= 0 && zIm ~= 0
-            
-            N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
-            Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
-            if xIm > imageDim(1)/2
-                markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
-            else
-                markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
-            end
-            
-            Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
-            if zIm > imageDim(2)/2
-                markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
-            else
-                markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
-            end
+            markCam(1) = ((yCam-distToGlass)*(n1/n2)+distToGlass)*(xIm - imageDim(1)/2)*(2*tand(FoV(1)/2))/imageDim(1);
+            markCam(3) = -((yCam-distToGlass)*(n1/n2)+distToGlass)*(zIm - imageDim(2)/2)*(2*tand(FoV(2)/2))/imageDim(2);
             
             markCam(2) = yCam;
             
+            %             N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
+            %             Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
+%             if xIm > imageDim(1)/2
+%                 markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
+%             else
+%                 markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
+%             end
+%             
+%             Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
+%             if zIm > imageDim(2)/2
+%                 markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
+%             else
+%                 markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
+%             end
+                                   
             %             FoV = FoV.*pi./180; %convert degrees to radians
             %
             %             psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
