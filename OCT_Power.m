@@ -635,7 +635,10 @@ else get(handles.browse,'Value')
     imshow(image)
 end
 
-sprintf('');
+
+% sprintf('');
+
+
 
 
 % --- Executes on button press in current.
