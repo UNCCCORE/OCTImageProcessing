@@ -22,9 +22,15 @@ k2_bar = appSettings.kParms(5);
 dia = appSettings.dragScreenDia; %m
 freestreamVelocity = appSettings.freestreamVelocity; %m/sec
 
-distToGlass = appSettings.distToGlass; %cm
-n1 = appSettings.n1;
-n2 = appSettings.n2;
+%image proc constants
+redThresh = appSettings.redThresh;
+yellowThresh1 = appSettings.yellowThresh1;
+yellowThresh2 = appSettings.yellowThresh2;
+yellowThresh3 = appSettings.yellowThresh3;
+blueThresh = appSettings.blueThresh;
+shapeBound1 = appSettings.shapeBound1;
+shapeBound2 = appSettings.shapeBound2;
+minArea = appSettings.minArea;
 
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
@@ -47,23 +53,18 @@ I2 = imfilter(I,h);
 %% Marker recognition
 %Isolate into three colors
 %redness
-redThresh = 55;
 Ithresh{1}= (I2(:,:,1) - max(I2(:,:,2), I2(:,:,3))) > redThresh;
 Ithresh{1} = imfill(Ithresh{1},'holes');
 % figure();
 % imshow(Ithresh{1});
 
 %yellowness
-yellowThresh1 = 150;
-yellowThresh2 = 160;
-yellowThresh3 = 120;
 Ithresh{2} = ((I2(:,:,1) > yellowThresh1) & (I2(:,:,2) > yellowThresh2) & (I2(:,:,3) < yellowThresh3));
 Ithresh{2} = imfill(Ithresh{2},'holes');
 % figure();
 % imshow(Ithresh{2});
 
 %blueness
-blueThresh = 40;
 Ithresh{3} = (I2(:,:,3) - max(I2(:,:,1), I2(:,:,2))) > blueThresh;
 Ithresh{3} = imfill(Ithresh{3},'holes');
 % figure();
@@ -104,9 +105,9 @@ for j=1:3
         propsArea = props{j}(i).Area;
         boundArea = props{j}(i).BoundingBox(3)*props{j}(i).BoundingBox(4);
         AR = max(props{j}(i).BoundingBox(3),props{j}(i).BoundingBox(4))/min(props{j}(i).BoundingBox(3),props{j}(i).BoundingBox(4));
-        if AR > 3 || propsArea < 100
+        if AR > 3 || propsArea < minArea
             %shapes(j,i) = '.';
-        elseif propsArea <= 0.40*boundArea % it's a cross
+        elseif propsArea <= shapeBound1*boundArea % it's a cross
 
             if marksIm{k,1}(1) == 0
                 marksIm{k,1}(1) = props{j}(i).Centroid(1);
@@ -119,7 +120,7 @@ for j=1:3
                 fprintf('%0.0f . %0.0f More square dots found than possible in %0.0f threshold. Excess dots ignored\n',j,sEx,j);
                 %msgbox(msg);
             end
-        elseif propsArea > 0.73*boundArea  % it's a circle
+        elseif propsArea > shapeBound2*boundArea  % it's a circle
             if marksIm{k+1,1}(1) == 0
                 marksIm{k+1,1}(1) = props{j}(i).Centroid(1);
                 marksIm{k+1,2}(1) = props{j}(i).Centroid(2);
@@ -131,7 +132,7 @@ for j=1:3
                 sprintf('%0.0f . %0.0f More circular dots found than possible in %0.0f threshold. Excess dots ignored\n',j,cEx,j);
                 %msgbox(msg);
             end
-        elseif propsArea > 0.4*boundArea && propsArea <=0.73*boundArea % it's a triangle
+        elseif propsArea > shapeBound1*boundArea && propsArea <=shapeBound2*boundArea % it's a triangle
             if marksIm{k+2,1}(1) == 0
                 marksIm{k+2,1}(1) = props{j}(i).Centroid(1);
                 marksIm{k+2,2}(1) = props{j}(i).Centroid(2);
@@ -177,28 +178,29 @@ marksIm{9,2}(:) = marksCode{9,2}(:);
 hold on;
 for j=1:9
     tempString1 =  string(j) +' fore' + '\rightarrow';
-    markPlot(i,1) = plot(marksIm{j,1}(1),marksIm{j,2}(1),'o','Color','White');
-    markText(i,1) = text(marksIm{j,1}(1),marksIm{j,2}(1),char(tempString1),'Color','White','HorizontalAlignment','Right');
+    markPlot(j,1) = plot(marksIm{j,1}(1),marksIm{j,2}(1),'o','Color','White');
+    markText(j,1) = text(marksIm{j,1}(1),marksIm{j,2}(1),char(tempString1),'Color','White','HorizontalAlignment','Right');
     
     tempString2 = '\leftarrow' + string(j) +' aft';
-    markPlot(i,2) = plot(marksIm{j,1}(2),marksIm{j,2}(2),'o','Color','White');
-    markText(i,2) = text(marksIm{j,1}(2),marksIm{j,2}(2),char(tempString2),'Color','White','HorizontalAlignment','Left');
+    markPlot(j,2) = plot(marksIm{j,1}(2),marksIm{j,2}(2),'o','Color','White');
+    markText(j,2) = text(marksIm{j,1}(2),marksIm{j,2}(2),char(tempString2),'Color','White','HorizontalAlignment','Left');
 end
 
 
 marksOK = questdlg('Are the marks OK?','Check marks','Yes','Edit Marks','Yes');
 while strcmp(marksOK,'Edit Marks')
     marksIm = editMarks(I2,marksIm);
-    clear markPlot markText
+    delete(markPlot);
+    delete(markText);
     
     for j=1:9
         tempString1 =  string(j) +' fore' + '\rightarrow';
-        markPlot(i,1) = plot(marksIm{j,1}(1),marksIm{j,2}(1),'o','Color','White');
-        markText(i,1) = text(marksIm{j,1}(1),marksIm{j,2}(1),char(tempString1),'Color','White','HorizontalAlignment','Right');
+        markPlot(j,1) = plot(marksIm{j,1}(1),marksIm{j,2}(1),'o','Color','White');
+        markText(j,1) = text(marksIm{j,1}(1),marksIm{j,2}(1),char(tempString1),'Color','White','HorizontalAlignment','Right');
         
         tempString2 = '\leftarrow' + string(j) +' aft';
-        markPlot(i,2) = plot(marksIm{j,1}(2),marksIm{j,2}(2),'o','Color','White');
-        markText(i,2) = text(marksIm{j,1}(2),marksIm{j,2}(2),char(tempString2),'Color','White','HorizontalAlignment','Left');
+        markPlot(j,2) = plot(marksIm{j,1}(2),marksIm{j,2}(2),'o','Color','White');
+        markText(j,2) = text(marksIm{j,1}(2),marksIm{j,2}(2),char(tempString2),'Color','White','HorizontalAlignment','Left');
     end
     
     marksOK = questdlg('Are the marks OK?','Check marks','Yes','Edit Marks','Yes');

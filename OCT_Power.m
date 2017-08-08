@@ -22,7 +22,7 @@ function varargout = OCT_Power(varargin)
 
 % Edit the above text to modify the response to help OCT_Power
 
-% Last Modified by GUIDE v2.5 19-Jul-2017 17:32:19
+% Last Modified by GUIDE v2.5 08-Aug-2017 12:01:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -121,8 +121,8 @@ global appSettings;
 global OCTResults;
 global image;
 image=getimage(handles);
-% OCTResults = checkHeight(appSettings,image);
-% matrix = NathansFunction(inputs);
+
+updateBases(handles);
 OCTResults = checkHeight(appSettings,image);
 
 %set heights to static boxes
@@ -148,6 +148,8 @@ global image;
 image=getimage(handles);
 % OCTResults = checkHeight(appSettings,image);
 % matrix = NathansFunction(inputs);
+updateBases(handles);
+
 OCTResults = checkPower(appSettings,image);
 
 %set heights
@@ -657,3 +659,24 @@ function browse_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of browse
+
+
+% --- Executes when user attempts to close figure1.
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+%Update bases
+updateBases(handles);
+% delete(hObject) closes the figure
+delete(hObject);
+
+
+% --- Executes on button press in changeSettings.
+function changeSettings_Callback(hObject, eventdata, handles)
+% hObject    handle to changeSettings (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+changeSettings();
+
