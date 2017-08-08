@@ -51,9 +51,9 @@ function OCT_Power_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to OCT_Power (see VARARGIN)
-set(handles.PRW,'Visible','off')
+set(handles.PRW,'Visible','off')        % Removes axes from preview window
 
-global appSettings
+global appSettings           %initialize gloabal variables
 global OCTResults
 global image
 
@@ -102,14 +102,14 @@ function prwvid_Callback(hObject, eventdata, handles)
 % hObject    handle to prwvid (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global vid
-vid = videoinput('winvideo',1);
+global video                            %initialize gloabal variables
+vid = videoinput('winvideo',1);         %selects camera, 1 defaults to webcam
 start(vid);
-axes(handles.PRW);
+axes(handles.PRW);                      %initializes axes titled PRW
 vidRes = vid.VideoResolution;
 nBands = vid.NumberOfBands;
 hImage = image( zeros(vidRes(2), vidRes(1), nBands) );
-preview(vid, hImage);
+preview(vid, hImage);                   %loads preview to axes
 
 % --- Executes on button press in checkheight.
 function checkheight_Callback(hObject, eventdata, handles)
@@ -607,11 +607,11 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-function image=getimage(handles)
+function image=getimage(handles)           %runs when radio button "current" is selected
 image =[];
 if get(handles.current,'Value')
     axes(handles.PRW);
-    image=fullfile(pwd,'tempImage.jpg');
+    image=fullfile(pwd,'tempImage.jpg');    %specified image to process
     imshow(image);
 %     global CAM;
 %     if(CAM==1)
@@ -625,7 +625,7 @@ if get(handles.current,'Value')
 %     else
 %         msgbox('Plz! Start Cam First by PUSHBUTTON')
 %     end
-else get(handles.browse,'Value')
+else get(handles.browse,'Value')                         %runs when radio button "browse" is selected
     [filename pathname] = uigetfile({'*.jpg';'*.bmp'},'File Selector');
     image = strcat(pathname, filename);
     [pathstr, name, ext] = fileparts(filename);
