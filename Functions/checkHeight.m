@@ -1,21 +1,40 @@
 function OCTResults = checkHeight(appSettings,imagePath)
 %% Assign structures values to local variables
+% image processing constants
 distToRigOrigin = appSettings.distToRigOrigin; %vector to rig origin in cam cordinates (cm)
 FoV = appSettings.FoV; %degrees
 markDistFromCoM = appSettings.markDistFromCoM;
 basesRig = appSettings.baseLocationsRig; %cordinates of bases in rig coridinate system (cm)
-
-distToGlass = appSettings.distToGlass; %cm
-n1 = appSettings.n1;
-n2 = appSettings.n2;
-
 basesCam = zeros(9,3); %cordinates of bases in cam coridinate system (cm)
+
+% % power related constants
+% rho = appSettings.rho; %kg/m^3
+% Fb = appSettings.Fb; %N
+% Cp = appSettings.Cp;
+% 
+% k1 = appSettings.kParms(1);
+% 
+% k0_bar = appSettings.kParms(2);
+% k2_bar = appSettings.kParms(3); 
+% 
+% dia = appSettings.dragScreenDia; %m
+% freestreamVelocity = appSettings.freestreamVelocity; %m/sec
+
+%image proc constants
+redThresh = appSettings.redThresh;
+yellowThresh1 = appSettings.yellowThresh1;
+yellowThresh2 = appSettings.yellowThresh2;
+yellowThresh3 = appSettings.yellowThresh3;
+blueThresh = appSettings.blueThresh;
+shapeBound1 = appSettings.shapeBound1;
+shapeBound2 = appSettings.shapeBound2;
+minArea = appSettings.minArea;
 
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
 end
 
-yCam = 50.*ones(9,1); % cm
+yCam = basesCam(:,2); % cm
 
 %% Image preperation
 %Import image
@@ -32,23 +51,18 @@ I2 = imfilter(I,h);
 %% Marker recognition
 %Isolate into three colors
 %redness
-redThresh = 55;
 Ithresh{1}= (I2(:,:,1) - max(I2(:,:,2), I2(:,:,3))) > redThresh;
 Ithresh{1} = imfill(Ithresh{1},'holes');
 % figure();
 % imshow(Ithresh{1});
 
 %yellowness
-yellowThresh1 = 150;
-yellowThresh2 = 160;
-yellowThresh3 = 120;
 Ithresh{2} = ((I2(:,:,1) > yellowThresh1) & (I2(:,:,2) > yellowThresh2) & (I2(:,:,3) < yellowThresh3));
 Ithresh{2} = imfill(Ithresh{2},'holes');
 % figure();
 % imshow(Ithresh{2});
 
 %blueness
-blueThresh = 40;
 Ithresh{3} = (I2(:,:,3) - max(I2(:,:,1), I2(:,:,2))) > blueThresh;
 Ithresh{3} = imfill(Ithresh{3},'holes');
 % figure();
@@ -89,9 +103,9 @@ for j=1:3
         propsArea = props{j}(i).Area;
         boundArea = props{j}(i).BoundingBox(3)*props{j}(i).BoundingBox(4);
         AR = max(props{j}(i).BoundingBox(3),props{j}(i).BoundingBox(4))/min(props{j}(i).BoundingBox(3),props{j}(i).BoundingBox(4));
-        if AR > 3 || propsArea < 100
+        if AR > 3 || propsArea < minArea
             %shapes(j,i) = '.';
-        elseif propsArea <= 0.40*boundArea % it's a cross
+        elseif propsArea <= shapeBound1*boundArea % it's a cross
 
             if marksIm{k,1}(1) == 0
                 marksIm{k,1}(1) = props{j}(i).Centroid(1);
@@ -104,7 +118,7 @@ for j=1:3
                 fprintf('%0.0f . %0.0f More square dots found than possible in %0.0f threshold. Excess dots ignored\n',j,sEx,j);
                 %msgbox(msg);
             end
-        elseif propsArea > 0.73*boundArea  % it's a circle
+        elseif propsArea > shapeBound2*boundArea  % it's a circle
             if marksIm{k+1,1}(1) == 0
                 marksIm{k+1,1}(1) = props{j}(i).Centroid(1);
                 marksIm{k+1,2}(1) = props{j}(i).Centroid(2);
@@ -116,7 +130,7 @@ for j=1:3
                 sprintf('%0.0f . %0.0f More circular dots found than possible in %0.0f threshold. Excess dots ignored\n',j,cEx,j);
                 %msgbox(msg);
             end
-        elseif propsArea > 0.4*boundArea && propsArea <=0.73*boundArea % it's a triangle
+        elseif propsArea > shapeBound1*boundArea && propsArea <=shapeBound2*boundArea % it's a triangle
             if marksIm{k+2,1}(1) == 0
                 marksIm{k+2,1}(1) = props{j}(i).Centroid(1);
                 marksIm{k+2,2}(1) = props{j}(i).Centroid(2);
@@ -253,59 +267,80 @@ end
 %% zenith angles and tether lengths
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
-%     zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
-    heights(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
+    zenith(i,1) = atand(abs(CoMCam(i,1)-basesCam(i,1))/abs(CoMCam(i,3)-basesCam(i,3)));
+    heights(i,1) = basesCam(i,3)-CoMCam(i,3);
 end
 
 struc OCTResults;
 OCTResults.heights = heights;
 
 %% define functions
-    function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
-        %this function takes the image x and z cordinates, the distnace from the
-        %camera to the mark, the pixel diminsions of the image, and the half the
-        %angle field of view and outputs the location of the mark in fixed camera
-        %cordinates (in cm).
-        if xIm ~= 0 && zIm ~= 0
-            markCam(1) = ((yCam-distToGlass)*(n1/n2)+distToGlass)*(xIm - imageDim(1)/2)*(2*tand(FoV(1)/2))/imageDim(1);
-            markCam(3) = -((yCam-distToGlass)*(n1/n2)+distToGlass)*(zIm - imageDim(2)/2)*(2*tand(FoV(2)/2))/imageDim(2);
-            
-            markCam(2) = yCam;
-            
-            %             N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
-            %             Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
-            %             if xIm > imageDim(1)/2
-            %                 markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
-            %             else
-            %                 markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
-            %             end
-            %
-            %             Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
-            %             if zIm > imageDim(2)/2
-            %                 markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
-            %             else
-            %                 markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
-            %             end
-            
-            %             FoV = FoV.*pi./180; %convert degrees to radians
-            %
-            %             psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
-            %             psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
-            %
-            %             Rx = [1 0 0; 0 cos(psiX) sin(psiX); 0 -sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
-            %             Rz = [cos(psiZ) sin(psiZ) 0; -sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
-            %
-            %             u0 = [0;1;0]; %initial unit vector in yCam direction
-            %
-            %             u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
-            %
-            %             F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
-            %
-            %             markCam = F.*u1; %vector from camera origin to mark location
-        else
-            markCam = [0;0;0];
-        end
-    end
+function markCam = getMarkLocation(xIm,zIm,yCam,imageDim,FoV)
+%this function takes the image x and z cordinates, the distnace from the
+%camera to the mark, the pixel diminsions of the image, and the half the
+%angle field of view and outputs the location of the mark in fixed camera
+%cordinates (in cm).
+if xIm ~= 0 && zIm ~= 0
+xFactor = -0.0015*yCam + 1.3244;
+zFactor = -0.0019*yCam + 1.1534;
+
+markCam(1) = xFactor*(xIm - (imageDim(1))/2)*(2*yCam*tand(FoV(1)/2))/imageDim(1);
+markCam(3) = -zFactor*(zIm - (imageDim(2))/2)*(2*yCam*tand(FoV(2)/2))/imageDim(2);
+
+markCam(2) = yCam;
+
+%--------Temp Method for charterization------------%%
+%     px2cm = 0.01285347; %cm/px
+%     markCam(1) = (xIm - (imageDim(1))/2)*px2cm;
+%     markCam(3) = -(zIm - (imageDim(2))/2)*px2cm;
+
+%----------older methods--------------%
+%     N = 1.33^2; % ratio (n2/n1)^2 simplified for water and air (1.33/1)^2
+%     Kx = imageDim(1)^2/(2*tand(FoV(1)/2)*(xIm-imageDim(1)/2))^2 + (N-1)/N;
+%     if xIm > imageDim(1)/2
+%         markCam(1) = 1/0.987*sqrt(yCam^2/(N*Kx));
+%     else
+%         markCam(1) = -1/0.987*sqrt(yCam^2/(N*Kx));
+%     end
+%
+%     Kz = imageDim(2)^2/(2*tand(FoV(2)/2)*(zIm-imageDim(2)/2))^2 + (N-1)/N;
+%     if zIm > imageDim(2)/2
+%         markCam(3) = -1/1.086*sqrt(yCam^2/(N*Kz));
+%     else
+%         markCam(3) = 1/1.086*sqrt(yCam^2/(N*Kz));
+%     end
+
+%     markCam(1) = (xIm - (imageDim(1))/2)*(2*yCam*tand(FoV(1)/2))/imageDim(1);
+%     markCam(3) = -(zIm - (imageDim(2))/2)*(2*yCam*tand(FoV(2)/2))/imageDim(2);
+
+% distToGlass =32.25*2.545;
+% n1 = 1.00029;
+% n2 = 1.33;
+%
+% markCam(1) = ((yCam-distToGlass)*(n1/n2)+distToGlass)*(xIm - imageDim(1)/2)*(2*tand(FoV(1)/2))/imageDim(1);
+% markCam(3) = -((yCam-distToGlass)*(n1/n2)+distToGlass)*(zIm - imageDim(2)/2)*(2*tand(FoV(2)/2))/imageDim(2);
+
+
+%     FoV = FoV*pi/180; %convert degrees to radians
+%     FoV = FoV/2;
+%
+%     psiZ = (xIm - imageDim(1)/2)/(imageDim(1)/2)*FoV(1); %the rotation about xCam
+%     psiX = (zIm - imageDim(2)/2)/(imageDim(2)/2)*FoV(2); %the rotation about zCam
+%
+%     Rx = [1 0 0; 0 cos(psiX) -sin(psiX); 0 sin(psiX) cos(psiX)]; %rotation matrix about xCam by psiX
+%     Rz = [cos(psiZ) -sin(psiZ) 0; sin(psiZ) cos(psiZ) 0; 0 0 1]; %rotation matrix about zCam by psiZ
+%
+%     u0 = [0;1;0]; %initial unit vector in yCam direction
+%
+%     u1 = Rx*Rz*u0; %new unit vector after applying rotations psiX and psiZ
+%
+%     F = yCam/u1(2); %scale factor to find xCam and zCam where F*u1 = [xCam;yCam;zCam]
+%
+%     markCam = F.*u1; %vector from camera origin to mark location
+ else
+     markCam = [0;0;0];
+ end
+end
 
     function CoM = getTurbineCoM(foreCam,aftCam,foreIm,aftIm)
         %this function takes the cordinates of two dots (in any cord system) and

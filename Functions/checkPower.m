@@ -12,12 +12,10 @@ rho = appSettings.rho; %kg/m^3
 Fb = appSettings.Fb; %N
 Cp = appSettings.Cp;
 
-k0 = appSettings.kParms(1);
-k1 = appSettings.kParms(2);
+k1 = appSettings.kParms(1);
 
-k0_bar = appSettings.kParms(3);
-k1_bar = appSettings.kParms(4);
-k2_bar = appSettings.kParms(5); 
+k0_bar = appSettings.kParms(2);
+k2_bar = appSettings.kParms(3); 
 
 dia = appSettings.dragScreenDia; %m
 freestreamVelocity = appSettings.freestreamVelocity; %m/sec
@@ -36,7 +34,7 @@ for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
 end
 
-yCam = 50.*ones(9,1); % cm
+yCam = basesCam(:,2); % cm
 
 %% Image preperation
 %Import image
@@ -269,26 +267,32 @@ end
 %% zenith angles and tether lengths
 for i=1:9
     basesCam(i,:) = basesRig(i,:) + distToRigOrigin;
-    zenith(i,1) = atand((CoMCam(i,1)-basesCam(i,1))/(CoMCam(i,3)-basesCam(i,3)));
-    heights(i,1) = abs(CoMCam(i,3)-basesCam(i,3));
+    zenith(i,1) = atand(abs(CoMCam(i,1)-basesCam(i,1))/abs(CoMCam(i,3)-basesCam(i,3)));
+    heights(i,1) = basesCam(i,3)-CoMCam(i,3);
 end
 
 %% find power
 %Define constants
 A = 2*(pi/4*(dia)^2); %cm^2. Area of 2 turbines, used as reference area throughout.
 
-%"Get" inputs
-alpha_d = zeros(9,1); %degrees. Left in for future non-zero angle of attack
+%Find pitch
+alpha = zeros(9,1);
+
+for i=1:length(alpha)
+    if isnan(marksIm{i,1}(1)) == 0 && isnan(marksIm{i,1}(2)) == 0
+        alpha(i) = atand((marksIm{i,2}(1)-marksIm{i,2}(2))/(marksIm{i,1}(2)-marksIm{i,1}(1)));
+    end
+end
 
 %Convert to radians
-alpha = alpha_d.*pi./180; %radians
+alpha = alpha.*pi./180; %radians
 theta = zenith.*pi./180; %radians
 
 %Calculate v
 for i=1:9
     %Calculate Cd and Cl
-    Cl(i) =  k0 + k1*alpha(i);
-    Cd(i) = k0_bar + k1_bar*alpha(i) + k2_bar*alpha(i)^2;
+    Cl(i) =  k1*alpha(i);
+    Cd(i) = k0_bar + k2_bar*alpha(i)^2;
     
     %Calculate v
     v(i) = sqrt(Fb*tan(theta(i))/(0.5*rho*A*(Cd(i)-Cl(i)*tan(theta(i))))); %m/sec
@@ -296,10 +300,14 @@ end
 
 %Calculate power for each turbine
 totalPowerExp = 0;
-totalPowerFree = 9*(0.5*rho*Cp*A*freestreamVelocity^3); %W
+ActiveOCTs = isnan(basesCam(:,1));
+ActiveOCTs = ActiveOCTs(ActiveOCTs == 0);
+totalPowerFree = length(ActiveOCTs)*(0.5*rho*Cp*A*freestreamVelocity^3); %W
 for i=1:9
         P(i) = 0.5*rho*A*v(i)^3*Cp; %W. Area is for both turbines.
-        totalPowerExp = totalPowerExp + P(i); %W
+        if isnan(P(i)) == 0
+            totalPowerExp = totalPowerExp + P(i); %W
+        end
 end
 
 powerRatio = totalPowerExp/totalPowerFree;

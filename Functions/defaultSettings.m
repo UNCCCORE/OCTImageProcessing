@@ -4,15 +4,16 @@ function defaultSettings
 clear programSettings;
 
 baseLocationsRig = zeros(9,3); %base locations
+baseLocationsRig(:,3) = [-24.7650000000000;-26.0350000000000;-25.4000000000000;-26.0350000000000;-24.7650000000000;-25.0825000000000;-26.0350000000000;-25.0825000000000;-24.7650000000000];
 rigOrigin = [60 10 50]; %vector to rig origin in camera (cam) cordinates (cm)
 markDistFromCoM = [1.25 1.25]; %dist from fore and aft marks (respectivly) from center of mass of turbine (cm)
 FoV = [37.5 23.24]; %full horizontal and vertical angular FoV (degrees)
 Cp = 0.5; %Cp of system
-kParms = [-0.0026,-0.2848,0.2755,-0.0759,0.1403]; %constants for paramterization of Cl and Cd [k0 k1 k0_bar k1_bar k2_bar]
+kParms = [1.384278894274922;0.623602305665119;0.906891291979912]; %constants for paramterization of Cl and Cd [k0 k1 k0_bar k1_bar k2_bar]
 rho = 1000; %density of working fluid (kg/m^3)
-Fb = 0.0997; %net bouyant force (N)
+Fb = 0.0922; %net bouyant force (N)
 dragScreenDia = 0.06; %diameter of drag screen (m)
-freestreamVelocity = 0.2; %m/sec
+freestreamVelocity = 0.164; %m/sec
 % distToGlass = 30; %cm
 redThresh = 55;
 yellowThresh1 = 150;

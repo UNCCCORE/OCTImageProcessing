@@ -52,7 +52,7 @@ function OCT_Power_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to OCT_Power (see VARARGIN)
 set(handles.PRW,'Visible','off')        % Removes axes from preview window
-
+clear appSettings OCTResults image
 global appSettings           %initialize gloabal variables
 global OCTResults
 global image
